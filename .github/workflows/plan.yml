@@ -1,0 +1,46 @@
+name: Generate & Push Training Plan
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: training-plan
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r sync/requirements.txt
+
+      - name: Generate any draft plans
+        env:
+          PLAN_API_BASE: ${{ secrets.PLAN_API_BASE }}
+          PLAN_API_SECRET: ${{ secrets.PLAN_API_SECRET }}
+        run: python sync/plan_generator.py
+
+      - name: Push upcoming workouts to Garmin
+        env:
+          # Cached session -- see README's "Scheduled sync" section for how
+          # to generate this secret. Shared with sync.yml.
+          GARMIN_TOKENS_DIR: ${{ secrets.GARMIN_TOKENS_JSON }}
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          PLAN_API_BASE: ${{ secrets.PLAN_API_BASE }}
+          PLAN_API_SECRET: ${{ secrets.PLAN_API_SECRET }}
+        run: python sync/push_plan_to_garmin.py

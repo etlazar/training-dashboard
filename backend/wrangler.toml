@@ -1,0 +1,14 @@
+name = "training-dashboard-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "training-dashboard"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# CORS origin allowed to call this API (the GitHub Pages dashboard).
+# Set via `wrangler secret put` is not needed for this one since it's not
+# sensitive — override at deploy time if the Pages URL ever changes.
+[vars]
+ALLOWED_ORIGIN = "https://etlazar.github.io"

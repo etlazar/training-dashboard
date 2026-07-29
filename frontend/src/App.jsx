@@ -5,6 +5,7 @@ import RestingHRChart from "./components/RestingHRChart";
 import SleepChart from "./components/SleepChart";
 import ActivityFeed from "./components/ActivityFeed";
 import WeeklyStats from "./components/WeeklyStats";
+import TrainingPlanCard from "./components/TrainingPlanCard";
 import { fetchActivities, fetchDailySummary, fetchSleep } from "./lib/api";
 import { secondsToHoursNumber } from "./lib/format";
 
@@ -63,6 +64,9 @@ function App() {
             </Card>
             <Card title="Sleep Stages" wide>
               <SleepChart data={sleep} />
+            </Card>
+            <Card title="Training Plan" wide>
+              <TrainingPlanCard />
             </Card>
             <Card title="Recent Activities" wide>
               <ActivityFeed activities={activities} />

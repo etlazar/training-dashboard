@@ -12,7 +12,9 @@ and a React (Vite + Recharts) frontend renders it, hosted on GitHub Pages.
 - [x] React/Recharts dashboard frontend (`frontend/`) — built and smoke-tested
 - [x] GitHub Pages deployment (`.github/workflows/deploy.yml`)
 - [x] Strava-style redesign + route maps
-- [ ] Training plan (race-goal plans, mileage progression, push to Garmin)
+- [x] Training plan (race-goal plans, mileage progression, push to Garmin) —
+  built and verified against real data; **not yet deployed** (needs a
+  Cloudflare account, see section 5)
 - [ ] Nutrition tracking + race nutrition plans
 
 ## 1. Run the sync script locally
@@ -102,6 +104,9 @@ key needed):
 - Stacked bar chart of sleep stages (deep/light/REM/awake)
 - Strava-style activity feed: a route map per activity (when GPS data
   exists) plus distance/duration/pace-or-speed/avg HR/elevation
+- Training Plan card (see section 5) — talks to the Cloudflare Worker
+  backend via `VITE_PLAN_API_BASE` (`.env.development` for local dev
+  against `wrangler dev`, `.env.production` for the deployed Worker)
 
 The color palette is led by Strava's accent orange (`#FC4C02`), validated
 for colorblind-safety and contrast with the dataviz skill's
@@ -148,21 +153,92 @@ Since the sync workflow commits data updates to `main` every 2 hours,
 each of those commits will also trigger a redeploy — the dashboard
 stays current automatically.
 
-## Planned next: training plan + nutrition
+## 5. Training plan (backend + generator + Garmin push)
 
-Two bigger features are planned but not yet built:
+This feature generates race-goal, weekly-mileage-progression, and general-
+fitness training plans (running and full triathlon, including brick
+workouts) and pushes them to your Garmin Connect calendar. It's fully
+built and verified against real data (see "How it works" below), but
+**needs a Cloudflare account to actually deploy** — nothing runs until you
+do the one-time setup below.
 
-- **Training plan**: race-goal periodized plans, weekly-mileage progression,
-  and general-fitness templates, pushed to Garmin Connect via
-  `garminconnect`'s typed workout builders (confirmed working —
-  `upload_running_workout`/etc. + `schedule_workout(id, date)` puts a
-  workout on your Garmin Connect calendar for automatic sync to the watch).
-  The actual plan-generation logic will be based on training-methodology
-  books to be provided.
-- **Nutrition tracking**: daily logging + race nutrition plans.
+### Methodology
 
-Both need a small serverless backend (recommended: Cloudflare Workers + D1)
-since — unlike the read-only Garmin data above — this is user-entered data
-that needs frequent writes a static GitHub Pages site can't accept. That
-backend's design is a separate planning pass once the above specifics are
-settled.
+Based on three training-methodology books you provided (*Daniels' Running
+Formula*, *Faster Road Racing* by Pfitzinger & Latter, *The Triathlete's
+Training Bible* by Joe Friel) — synthesized into original code, not
+transcribed. Running pace zones use the published Daniels-Gilbert VO2/
+velocity regression equations (not the book's own table); triathlon zones
+use the standard 20-min-test/1000m-time-trial protocol with an original
+5-zone scheme (not Friel's specific 7-zone breakdown, which is a table
+graphic in the book). Phase structure (Base → Build → Peak → Taper → Race),
+the A/B/C-priority → taper-length mapping, and the volume-progression rule
+(hold ~3 weeks, step up, cutback every 3rd-4th week) all converge across
+the three books.
+
+### One-time setup
+
+1. **Create a [Cloudflare account](https://dash.cloudflare.com/sign-up)**
+   (free tier, no card required) if you don't have one.
+2. **Log in with wrangler** (already installed as a dev dependency):
+   ```bash
+   cd backend
+   npx wrangler login
+   ```
+3. **Create the D1 database**:
+   ```bash
+   npx wrangler d1 create training-dashboard
+   ```
+   Copy the `database_id` it prints into `backend/wrangler.toml`, replacing
+   `REPLACE_WITH_D1_DATABASE_ID`.
+4. **Create an API token** for GitHub Actions to deploy with: Cloudflare
+   dashboard → **My Profile → API Tokens → Create Token** → use the
+   "Edit Cloudflare Workers" template (needs Workers Scripts + D1 edit
+   permissions). Set it as a repo secret:
+   ```bash
+   gh secret set CLOUDFLARE_API_TOKEN
+   ```
+5. **Set the write-auth secret** (protects POST/PATCH endpoints — reads
+   stay public like the rest of the dashboard). Pick any long random
+   string and set it as a repo secret twice (Worker + Python both need it):
+   ```bash
+   gh secret set PLAN_API_SECRET
+   ```
+6. Push to `main` (or run `gh workflow run deploy-backend.yml`) — this
+   applies the D1 migrations, deploys the Worker, and sets its
+   `WRITE_SECRET` from `PLAN_API_SECRET`.
+7. Set the deployed Worker's URL as a repo secret (`plan.yml` needs it):
+   ```bash
+   gh secret set PLAN_API_BASE --body "https://training-dashboard-api.<your-subdomain>.workers.dev"
+   ```
+8. Update `frontend/.env.production`'s `VITE_PLAN_API_BASE` with the same
+   URL and push — the deploy workflow will rebuild the frontend against it.
+
+### How it works
+
+- `backend/` — a Cloudflare Worker + D1 database (schema in
+  `backend/migrations/`). A thin CRUD API (`races`, `plans`,
+  `plan_workouts`) — it doesn't own the generation logic or talk to
+  Garmin, both stay in Python next to the existing Garmin integration.
+- `sync/plan_generator.py` — polls the Worker for draft plans, computes
+  VDOT/FTHR/FTPa/FTPo zones and a full week-by-week plan, posts the
+  generated workouts back. Verified locally against `wrangler dev`
+  end-to-end for both a running race plan and a triathlon plan (including
+  a real brick workout).
+- `sync/push_plan_to_garmin.py` — builds the exact Garmin workout JSON
+  (confirmed against a real workout already in your account, synced from
+  TrainingPeaks, via `get_workout_by_id`) and pushes/schedules upcoming
+  workouts to your Garmin Connect calendar. Verified against the real
+  account (pushed, inspected, and cleaned up test workouts during
+  development).
+- `.github/workflows/plan.yml` — runs both scripts every 2 hours.
+- `.github/workflows/deploy-backend.yml` — deploys the Worker + applies
+  D1 migrations on changes to `backend/`.
+- The dashboard's "Training Plan" card lets you create a plan (race goal,
+  mileage progression, or general fitness) and shows the generated
+  week-by-week schedule once it exists.
+
+## Planned next: nutrition tracking
+
+Daily nutrition logging + race nutrition plans, on the same Cloudflare
+backend as the training plan feature above.
