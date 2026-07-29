@@ -1,0 +1,49 @@
+name: Sync Garmin Data
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: garmin-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r sync/requirements.txt
+
+      - name: Run Garmin sync
+        env:
+          # Cached session (see README for how to generate this secret).
+          # Using a cached session avoids hitting Garmin's MFA flow on
+          # every scheduled run, which can't be completed non-interactively.
+          GARMIN_TOKENS_DIR: ${{ secrets.GARMIN_TOKENS_JSON }}
+          # Optional fallback, only used if the cached session above is
+          # ever missing/rejected. If your account has MFA enabled, a
+          # fallback login here will fail loudly (rather than hang) since
+          # there's no way to supply an MFA code in CI.
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+        run: python sync/sync_garmin.py --days 3
+
+      - name: Commit and push updated data
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: sync Garmin data"
+          file_pattern: "data/*.json"

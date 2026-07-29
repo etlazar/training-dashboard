@@ -1,0 +1,25 @@
+# Python
+sync/.venv/
+sync/venv/
+__pycache__/
+*.pyc
+
+# Garmin session tokens (never commit these)
+.garminconnect/
+sync/.garminconnect/
+
+# Env files with secrets
+.env
+sync/.env
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local dev-server launcher (machine-specific paths)
+run-dev.cmd

@@ -1,0 +1,79 @@
+[
+  {
+    "date": "2026-07-23",
+    "sleepTimeSeconds": 28020,
+    "deepSleepSeconds": 6240,
+    "lightSleepSeconds": 16800,
+    "remSleepSeconds": 4980,
+    "awakeSleepSeconds": 0,
+    "sleepStartTimestampGMT": 1784776439000,
+    "sleepEndTimestampGMT": 1784804459000,
+    "overallSleepScore": 87
+  },
+  {
+    "date": "2026-07-24",
+    "sleepTimeSeconds": 23880,
+    "deepSleepSeconds": 5100,
+    "lightSleepSeconds": 13680,
+    "remSleepSeconds": 5100,
+    "awakeSleepSeconds": 720,
+    "sleepStartTimestampGMT": 1784864492000,
+    "sleepEndTimestampGMT": 1784889092000,
+    "overallSleepScore": 80
+  },
+  {
+    "date": "2026-07-25",
+    "sleepTimeSeconds": 28200,
+    "deepSleepSeconds": 4800,
+    "lightSleepSeconds": 17700,
+    "remSleepSeconds": 5700,
+    "awakeSleepSeconds": 900,
+    "sleepStartTimestampGMT": 1784952539000,
+    "sleepEndTimestampGMT": 1784981639000,
+    "overallSleepScore": 86
+  },
+  {
+    "date": "2026-07-26",
+    "sleepTimeSeconds": 27420,
+    "deepSleepSeconds": 5940,
+    "lightSleepSeconds": 16920,
+    "remSleepSeconds": 4560,
+    "awakeSleepSeconds": 120,
+    "sleepStartTimestampGMT": 1785038999000,
+    "sleepEndTimestampGMT": 1785066539000,
+    "overallSleepScore": 84
+  },
+  {
+    "date": "2026-07-27",
+    "sleepTimeSeconds": 20400,
+    "deepSleepSeconds": 4260,
+    "lightSleepSeconds": 14640,
+    "remSleepSeconds": 1500,
+    "awakeSleepSeconds": 120,
+    "sleepStartTimestampGMT": 1785125879000,
+    "sleepEndTimestampGMT": 1785146399000,
+    "overallSleepScore": 54
+  },
+  {
+    "date": "2026-07-28",
+    "sleepTimeSeconds": 25017,
+    "deepSleepSeconds": 4380,
+    "lightSleepSeconds": 15420,
+    "remSleepSeconds": 5220,
+    "awakeSleepSeconds": 0,
+    "sleepStartTimestampGMT": 1785211403000,
+    "sleepEndTimestampGMT": 1785236420000,
+    "overallSleepScore": 83
+  },
+  {
+    "date": "2026-07-29",
+    "sleepTimeSeconds": 26760,
+    "deepSleepSeconds": 3300,
+    "lightSleepSeconds": 16740,
+    "remSleepSeconds": 6720,
+    "awakeSleepSeconds": 60,
+    "sleepStartTimestampGMT": 1785296000000,
+    "sleepEndTimestampGMT": 1785322820000,
+    "overallSleepScore": 85
+  }
+]
