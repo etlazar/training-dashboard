@@ -11,6 +11,9 @@ and a React (Vite + Recharts) frontend renders it, hosted on GitHub Pages.
 - [x] Scheduled GitHub Actions sync workflow (`.github/workflows/sync.yml`)
 - [x] React/Recharts dashboard frontend (`frontend/`) — built and smoke-tested
 - [x] GitHub Pages deployment (`.github/workflows/deploy.yml`)
+- [x] Strava-style redesign + route maps
+- [ ] Training plan (race-goal plans, mileage progression, push to Garmin)
+- [ ] Nutrition tracking + race nutrition plans
 
 ## 1. Run the sync script locally
 
@@ -53,7 +56,7 @@ responses can vary slightly by account/device.
 
 ## 2. Scheduled sync (GitHub Actions)
 
-`.github/workflows/sync.yml` runs the sync script every 6 hours (and on
+`.github/workflows/sync.yml` runs the sync script every 2 hours (and on
 manual `workflow_dispatch`), then commits/pushes any changed files under
 `data/` back to the repo using
 [git-auto-commit-action](https://github.com/stefanzweifel/git-auto-commit-action)
@@ -88,12 +91,24 @@ for the schedule.
 
 ## 3. Frontend dashboard
 
-`frontend/` is a Vite + React app using [Recharts](https://recharts.org/):
+`frontend/` is a Vite + React app using [Recharts](https://recharts.org/) and
+[react-leaflet](https://react-leaflet.js.org/) (OpenStreetMap tiles, no API
+key needed):
 
+- Weekly stat tiles (distance/time/elevation/activity count, with a delta
+  vs. the prior week)
 - Line chart of daily steps
 - Line chart of resting heart rate
 - Stacked bar chart of sleep stages (deep/light/REM/awake)
-- Table of recent activities
+- Strava-style activity feed: a route map per activity (when GPS data
+  exists) plus distance/duration/pace-or-speed/avg HR/elevation
+
+The color palette is led by Strava's accent orange (`#FC4C02`), validated
+for colorblind-safety and contrast with the dataviz skill's
+`validate_palette.js`. Route GPS polylines are synced by
+`sync/sync_garmin.py` (downsampled to ~100 points per activity, cached on
+`data/activities.json` so they're only fetched once per activity, never
+re-fetched on later runs).
 
 It fetches `data/*.json` at runtime (not bundled at build time), so the
 same build always reflects whatever is currently in `/data`. A
@@ -129,6 +144,25 @@ One-time setup after pushing to GitHub:
    **Actions** tab for the run. Once it succeeds, the dashboard is live
    at `https://<your-username>.github.io/training-dashboard/`.
 
-Since the sync workflow commits data updates to `main` every 6 hours,
+Since the sync workflow commits data updates to `main` every 2 hours,
 each of those commits will also trigger a redeploy — the dashboard
 stays current automatically.
+
+## Planned next: training plan + nutrition
+
+Two bigger features are planned but not yet built:
+
+- **Training plan**: race-goal periodized plans, weekly-mileage progression,
+  and general-fitness templates, pushed to Garmin Connect via
+  `garminconnect`'s typed workout builders (confirmed working —
+  `upload_running_workout`/etc. + `schedule_workout(id, date)` puts a
+  workout on your Garmin Connect calendar for automatic sync to the watch).
+  The actual plan-generation logic will be based on training-methodology
+  books to be provided.
+- **Nutrition tracking**: daily logging + race nutrition plans.
+
+Both need a small serverless backend (recommended: Cloudflare Workers + D1)
+since — unlike the read-only Garmin data above — this is user-entered data
+that needs frequent writes a static GitHub Pages site can't accept. That
+backend's design is a separate planning pass once the above specifics are
+settled.

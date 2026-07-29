@@ -44,3 +44,37 @@ export function formatActivityDate(startTimeLocal) {
     year: "numeric",
   });
 }
+
+const PACE_PER_KM_TYPES = new Set([
+  "running",
+  "trail_running",
+  "treadmill_running",
+  "walking",
+  "hiking",
+]);
+const PACE_PER_100M_TYPES = new Set(["lap_swimming", "open_water_swimming"]);
+
+function formatMinSec(secondsPerUnit) {
+  if (!Number.isFinite(secondsPerUnit) || secondsPerUnit <= 0) return "-";
+  const minutes = Math.floor(secondsPerUnit / 60);
+  const seconds = Math.round(secondsPerUnit % 60);
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+/** Returns { label, value } — pace (min/km, min/100m) for run/walk/swim,
+ * speed (km/h) for everything else (cycling, rowing, etc). */
+export function formatPaceOrSpeed(activityType, averageSpeedMps) {
+  if (!averageSpeedMps || averageSpeedMps <= 0) {
+    return { label: "Speed", value: "-" };
+  }
+  if (PACE_PER_KM_TYPES.has(activityType)) {
+    const secondsPerKm = 1000 / averageSpeedMps;
+    return { label: "Pace", value: `${formatMinSec(secondsPerKm)} /km` };
+  }
+  if (PACE_PER_100M_TYPES.has(activityType)) {
+    const secondsPer100m = 100 / averageSpeedMps;
+    return { label: "Pace", value: `${formatMinSec(secondsPer100m)} /100m` };
+  }
+  const kmh = averageSpeedMps * 3.6;
+  return { label: "Speed", value: `${kmh.toFixed(1)} km/h` };
+}

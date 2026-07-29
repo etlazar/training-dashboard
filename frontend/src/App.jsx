@@ -3,7 +3,8 @@ import Card from "./components/Card";
 import StepsChart from "./components/StepsChart";
 import RestingHRChart from "./components/RestingHRChart";
 import SleepChart from "./components/SleepChart";
-import ActivitiesTable from "./components/ActivitiesTable";
+import ActivityFeed from "./components/ActivityFeed";
+import WeeklyStats from "./components/WeeklyStats";
 import { fetchActivities, fetchDailySummary, fetchSleep } from "./lib/api";
 import { secondsToHoursNumber } from "./lib/format";
 
@@ -51,20 +52,23 @@ function App() {
       )}
 
       {status === "ready" && (
-        <div className="dashboard-grid">
-          <Card title="Steps">
-            <StepsChart data={dailySummary} />
-          </Card>
-          <Card title="Resting Heart Rate">
-            <RestingHRChart data={dailySummary} />
-          </Card>
-          <Card title="Sleep Stages" wide>
-            <SleepChart data={sleep} />
-          </Card>
-          <Card title="Recent Activities" wide>
-            <ActivitiesTable activities={activities} />
-          </Card>
-        </div>
+        <>
+          <WeeklyStats activities={activities} />
+          <div className="dashboard-grid">
+            <Card title="Steps">
+              <StepsChart data={dailySummary} />
+            </Card>
+            <Card title="Resting Heart Rate">
+              <RestingHRChart data={dailySummary} />
+            </Card>
+            <Card title="Sleep Stages" wide>
+              <SleepChart data={sleep} />
+            </Card>
+            <Card title="Recent Activities" wide>
+              <ActivityFeed activities={activities} />
+            </Card>
+          </div>
+        </>
       )}
     </>
   );

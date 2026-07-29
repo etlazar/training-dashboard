@@ -54,6 +54,8 @@ DAILY_SUMMARY_FILE = DATA_DIR / "daily_summary.json"
 SLEEP_FILE = DATA_DIR / "sleep.json"
 ACTIVITIES_FILE = DATA_DIR / "activities.json"
 
+MAX_ROUTE_POINTS = 100
+
 
 def get_tokenstore() -> str:
     return os.getenv("GARMIN_TOKENS_DIR", str(Path.home() / ".garmin_tokens"))
@@ -142,6 +144,22 @@ def upsert_by_key(existing: list, new_items: list, key: str) -> list:
     return sorted(by_key.values(), key=lambda x: x[key])
 
 
+def downsample(points: list, max_points: int) -> list:
+    """Evenly stride down to at most max_points, always keeping the last point.
+
+    Garmin's maxPolylineSize query param doesn't reliably cap the response
+    (observed 273 points back from a request for 20), so we downsample
+    ourselves rather than trust it.
+    """
+    if len(points) <= max_points:
+        return points
+    stride = len(points) / max_points
+    indices = sorted({int(i * stride) for i in range(max_points)})
+    if indices[-1] != len(points) - 1:
+        indices.append(len(points) - 1)
+    return [points[i] for i in indices]
+
+
 def fetch_daily_summary(garmin: Garmin, day: date) -> dict | None:
     cdate = day.isoformat()
     try:
@@ -192,7 +210,28 @@ def fetch_sleep(garmin: Garmin, day: date) -> dict | None:
     }
 
 
-def fetch_activities(garmin: Garmin, limit: int) -> list:
+def fetch_activity_route(garmin: Garmin, activity_id) -> list | None:
+    """Return a downsampled [[lat, lon], ...] route, or None if the activity
+    has no GPS track (indoor activities, strength training, etc.)."""
+    try:
+        details = garmin.get_activity_details(str(activity_id))
+    except (GarminConnectConnectionError, GarminConnectTooManyRequestsError) as e:
+        print(f"  skipping route for {activity_id}: {e}")
+        return None
+    poly = (details or {}).get("geoPolylineDTO") or {}
+    points = poly.get("polyline") or []
+    if not points:
+        return None
+    points = downsample(points, MAX_ROUTE_POINTS)
+    route = [
+        [p["lat"], p["lon"]]
+        for p in points
+        if p.get("lat") is not None and p.get("lon") is not None
+    ]
+    return route or None
+
+
+def fetch_activities(garmin: Garmin, limit: int, existing_routes: dict) -> list:
     try:
         activities = garmin.get_activities(0, limit)
     except (GarminConnectConnectionError, GarminConnectTooManyRequestsError) as e:
@@ -203,6 +242,11 @@ def fetch_activities(garmin: Garmin, limit: int) -> list:
         activity_id = act.get("activityId")
         if activity_id is None:
             continue
+
+        route = existing_routes.get(activity_id)
+        if route is None:
+            route = fetch_activity_route(garmin, activity_id)
+
         result.append(
             {
                 "activityId": activity_id,
@@ -216,6 +260,7 @@ def fetch_activities(garmin: Garmin, limit: int) -> list:
                 "maxHR": act.get("maxHR"),
                 "elevationGainMeters": act.get("elevationGain"),
                 "averageSpeedMps": act.get("averageSpeed"),
+                "route": route,
             }
         )
     return result
@@ -254,13 +299,17 @@ def main():
             new_sleep.append(sleep)
 
     print(f"Syncing last {args.activities_limit} activities...")
-    new_activities = fetch_activities(garmin, args.activities_limit)
+    existing_activities = load_json_list(ACTIVITIES_FILE)
+    existing_routes = {
+        a["activityId"]: a["route"]
+        for a in existing_activities
+        if a.get("route") is not None
+    }
+    new_activities = fetch_activities(garmin, args.activities_limit, existing_routes)
 
     daily_summary = upsert_by_key(load_json_list(DAILY_SUMMARY_FILE), new_daily, "date")
     sleep_data = upsert_by_key(load_json_list(SLEEP_FILE), new_sleep, "date")
-    activities = upsert_by_key(
-        load_json_list(ACTIVITIES_FILE), new_activities, "activityId"
-    )
+    activities = upsert_by_key(existing_activities, new_activities, "activityId")
     activities.sort(key=lambda a: a.get("startTimeLocal") or "", reverse=True)
 
     atomic_write_json(DAILY_SUMMARY_FILE, daily_summary)
