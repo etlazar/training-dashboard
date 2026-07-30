@@ -6,6 +6,23 @@ const PRIORITIES = new Set(["A", "B", "C"]);
 const PLAN_MODES = new Set(["race_goal", "mileage_progression", "general_fitness"]);
 const SPORT_SCOPES = new Set(["run", "triathlon"]);
 
+// Race-day nutrition targets by race type. Original synthesis of standard,
+// widely-published sports-nutrition guidance (ACSM/ISSN position stands,
+// IOC nutrition consensus, Jeukendrup's carbohydrate-oxidation research) --
+// general guidance, not personalized/medical advice.
+const NUTRITION_TARGETS_BY_RACE_TYPE = {
+  run_5k: { carb_load_days: 0, carb_load_g_per_kg: 0, race_day_carbs_g_per_hour: 0, race_day_fluid_ml_per_hour: 600, race_day_sodium_mg_per_hour: null },
+  run_10k: { carb_load_days: 0, carb_load_g_per_kg: 0, race_day_carbs_g_per_hour: 20, race_day_fluid_ml_per_hour: 600, race_day_sodium_mg_per_hour: null },
+  tri_sprint: { carb_load_days: 0, carb_load_g_per_kg: 0, race_day_carbs_g_per_hour: 20, race_day_fluid_ml_per_hour: 600, race_day_sodium_mg_per_hour: null },
+  run_15k: { carb_load_days: 1, carb_load_g_per_kg: 7, race_day_carbs_g_per_hour: 40, race_day_fluid_ml_per_hour: 650, race_day_sodium_mg_per_hour: 350 },
+  run_10mile: { carb_load_days: 1, carb_load_g_per_kg: 7.5, race_day_carbs_g_per_hour: 45, race_day_fluid_ml_per_hour: 650, race_day_sodium_mg_per_hour: 400 },
+  tri_olympic: { carb_load_days: 1, carb_load_g_per_kg: 8, race_day_carbs_g_per_hour: 50, race_day_fluid_ml_per_hour: 650, race_day_sodium_mg_per_hour: 400 },
+  run_half: { carb_load_days: 1, carb_load_g_per_kg: 8, race_day_carbs_g_per_hour: 55, race_day_fluid_ml_per_hour: 700, race_day_sodium_mg_per_hour: 450 },
+  tri_70_3: { carb_load_days: 2, carb_load_g_per_kg: 10, race_day_carbs_g_per_hour: 75, race_day_fluid_ml_per_hour: 700, race_day_sodium_mg_per_hour: 500 },
+  run_marathon: { carb_load_days: 3, carb_load_g_per_kg: 11, race_day_carbs_g_per_hour: 75, race_day_fluid_ml_per_hour: 700, race_day_sodium_mg_per_hour: 500 },
+  tri_full: { carb_load_days: 3, carb_load_g_per_kg: 12, race_day_carbs_g_per_hour: 90, race_day_fluid_ml_per_hour: 750, race_day_sodium_mg_per_hour: 600 },
+};
+
 function corsHeaders(env) {
   return {
     "Access-Control-Allow-Origin": env.ALLOWED_ORIGIN || "*",
@@ -233,6 +250,141 @@ async function handlePlanWorkoutPatch(request, env, id) {
   return json({ ok: true }, 200, env);
 }
 
+// USDA FoodData Central nutrient IDs (standard, documented by USDA).
+const USDA_NUTRIENT_IDS = { calories: 1008, protein: 1003, carbs: 1005, fat: 1004 };
+
+async function handleFoodSearch(request, env, url) {
+  if (request.method !== "GET") return json({ error: "method not allowed" }, 405, env);
+  const q = url.searchParams.get("q");
+  if (!q || q.trim().length < 2) return json([], 200, env);
+  if (!env.USDA_API_KEY) return json({ error: "USDA_API_KEY not configured" }, 500, env);
+
+  const usdaUrl =
+    `https://api.nal.usda.gov/fdc/v1/foods/search` +
+    `?api_key=${encodeURIComponent(env.USDA_API_KEY)}` +
+    `&query=${encodeURIComponent(q)}&pageSize=10`;
+
+  const res = await fetch(usdaUrl);
+  if (!res.ok) return json({ error: `USDA search failed: ${res.status}` }, 502, env);
+  const data = await res.json();
+
+  const nutrientValue = (food, id) =>
+    food.foodNutrients?.find((n) => n.nutrientId === id)?.value ?? null;
+
+  const results = (data.foods || []).map((f) => ({
+    fdc_id: f.fdcId,
+    name: f.description,
+    calories_per_100g: nutrientValue(f, USDA_NUTRIENT_IDS.calories),
+    protein_g_per_100g: nutrientValue(f, USDA_NUTRIENT_IDS.protein),
+    carbs_g_per_100g: nutrientValue(f, USDA_NUTRIENT_IDS.carbs),
+    fat_g_per_100g: nutrientValue(f, USDA_NUTRIENT_IDS.fat),
+  }));
+  return json(results, 200, env);
+}
+
+async function handleNutritionLogs(request, env, url) {
+  if (request.method === "GET") {
+    const date = url.searchParams.get("date");
+    const after = url.searchParams.get("after");
+    const before = url.searchParams.get("before");
+    const clauses = [];
+    const binds = [];
+    if (date) {
+      clauses.push("date = ?");
+      binds.push(date);
+    }
+    if (after) {
+      clauses.push("date >= ?");
+      binds.push(after);
+    }
+    if (before) {
+      clauses.push("date <= ?");
+      binds.push(before);
+    }
+    let query = `SELECT * FROM nutrition_logs`;
+    if (clauses.length) query += ` WHERE ${clauses.join(" AND ")}`;
+    query += ` ORDER BY date DESC, time DESC`;
+    const { results } = await env.DB.prepare(query).bind(...binds).all();
+    return json(results, 200, env);
+  }
+
+  if (request.method === "POST") {
+    if (!requireAuth(request, env)) return json({ error: "unauthorized" }, 401, env);
+    const body = await request.json();
+    if (!isValidDate(body.date) || !body.food_name || !body.quantity_g || body.calories == null) {
+      return json({ error: "invalid nutrition log payload" }, 400, env);
+    }
+    const { meta } = await env.DB.prepare(
+      `INSERT INTO nutrition_logs (date, time, food_name, fdc_id, quantity_g, calories, protein_g, carbs_g, fat_g)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(
+        body.date,
+        body.time ?? null,
+        body.food_name,
+        body.fdc_id ?? null,
+        body.quantity_g,
+        body.calories,
+        body.protein_g ?? null,
+        body.carbs_g ?? null,
+        body.fat_g ?? null,
+      )
+      .run();
+    return json({ id: meta.last_row_id }, 201, env);
+  }
+
+  return json({ error: "method not allowed" }, 405, env);
+}
+
+async function handleNutritionPlans(request, env, url) {
+  if (request.method === "GET") {
+    const raceId = url.searchParams.get("race_id");
+    let query = `SELECT * FROM nutrition_plans`;
+    const binds = [];
+    if (raceId) {
+      query += ` WHERE race_id = ?`;
+      binds.push(raceId);
+    }
+    query += ` ORDER BY created_at DESC`;
+    const { results } = await env.DB.prepare(query).bind(...binds).all();
+    return json(results, 200, env);
+  }
+
+  if (request.method === "POST") {
+    if (!requireAuth(request, env)) return json({ error: "unauthorized" }, 401, env);
+    const body = await request.json();
+    if (!body.race_id || !body.body_weight_kg) {
+      return json({ error: "race_id and body_weight_kg are required" }, 400, env);
+    }
+    const race = await env.DB.prepare(`SELECT race_type FROM races WHERE id = ?`).bind(body.race_id).first();
+    if (!race) return json({ error: "race not found" }, 404, env);
+
+    const targets = NUTRITION_TARGETS_BY_RACE_TYPE[race.race_type];
+    if (!targets) return json({ error: "unknown race_type" }, 400, env);
+
+    const { meta } = await env.DB.prepare(
+      `INSERT INTO nutrition_plans
+        (race_id, body_weight_kg, carb_load_days, carb_load_g_per_kg,
+         race_day_carbs_g_per_hour, race_day_fluid_ml_per_hour, race_day_sodium_mg_per_hour, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(
+        body.race_id,
+        body.body_weight_kg,
+        targets.carb_load_days,
+        targets.carb_load_g_per_kg,
+        targets.race_day_carbs_g_per_hour,
+        targets.race_day_fluid_ml_per_hour,
+        targets.race_day_sodium_mg_per_hour,
+        body.notes ?? null,
+      )
+      .run();
+    return json({ id: meta.last_row_id, race_id: body.race_id, body_weight_kg: body.body_weight_kg, ...targets }, 201, env);
+  }
+
+  return json({ error: "method not allowed" }, 405, env);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
@@ -247,6 +399,9 @@ export default {
       if (path === "/api/plans") return await handlePlans(request, env, url);
       if (path === "/api/plan-workouts") return await handlePlanWorkouts(request, env, url);
       if (path === "/api/plan-workouts/bulk") return await handlePlanWorkoutsBulk(request, env);
+      if (path === "/api/food-search") return await handleFoodSearch(request, env, url);
+      if (path === "/api/nutrition-logs") return await handleNutritionLogs(request, env, url);
+      if (path === "/api/nutrition-plans") return await handleNutritionPlans(request, env, url);
 
       const workoutPatchMatch = path.match(/^\/api\/plan-workouts\/(\d+)$/);
       if (workoutPatchMatch) return await handlePlanWorkoutPatch(request, env, workoutPatchMatch[1]);

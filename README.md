@@ -15,7 +15,9 @@ and a React (Vite + Recharts) frontend renders it, hosted on GitHub Pages.
 - [x] Training plan (race-goal plans, mileage progression, push to Garmin) —
   built and verified against real data; **not yet deployed** (needs a
   Cloudflare account, see section 5)
-- [ ] Nutrition tracking + race nutrition plans
+- [x] Nutrition tracking + race nutrition plans — built and verified
+  (calculator + logging CRUD); food-search needs a USDA API key (see
+  section 6) before it's fully live
 
 ## 1. Run the sync script locally
 
@@ -238,7 +240,48 @@ the three books.
   mileage progression, or general fitness) and shows the generated
   week-by-week schedule once it exists.
 
-## Planned next: nutrition tracking
+## 6. Nutrition tracking + race nutrition plans
 
-Daily nutrition logging + race nutrition plans, on the same Cloudflare
-backend as the training plan feature above.
+Daily food logging (search [USDA FoodData Central](https://fdc.nal.usda.gov/)
+for a food, pick a result, macros scale automatically to the quantity you
+ate) and calculated race nutrition plans (carb-loading + race-day fueling),
+on the same Cloudflare backend as the training plan feature. Uses standard
+published sports-nutrition guidance (ACSM/ISSN position stands, IOC
+nutrition consensus, Jeukendrup's carbohydrate research) — general
+guidance, not personalized or medical advice.
+
+Unlike training plans, nutrition-plan math is simple and stateless (body
+weight + race duration → carb-load/fueling targets), so it's computed
+directly in the Worker with no Python/scheduled-job round-trip needed.
+
+### One-time setup
+
+1. Get a free USDA FoodData Central API key (instant, no approval) at
+   [api.data.gov/signup](https://api.data.gov/signup/).
+2. Set it as a Worker secret:
+   ```bash
+   cd backend
+   npx wrangler secret put USDA_API_KEY
+   ```
+   (For local dev, add `USDA_API_KEY=<your key>` to `backend/.dev.vars`
+   instead — that file is gitignored.)
+3. If you've already deployed the backend (section 5), redeploy so the new
+   `nutrition_logs`/`nutrition_plans` tables get migrated in:
+   ```bash
+   gh workflow run deploy-backend.yml
+   ```
+
+### How it works
+
+- `backend/migrations/0003_nutrition.sql` — `nutrition_logs` (food diary
+  entries) and `nutrition_plans` (per-race calculated targets).
+- `backend/src/index.js` — `GET /api/food-search` proxies USDA FDC search
+  server-side (keeps the API key out of the browser); `nutrition-logs` and
+  `nutrition-plans` are standard CRUD, same auth pattern as races/plans.
+  The carb-load/fueling numbers are computed immediately on
+  `POST /api/nutrition-plans` from a small lookup table keyed by race type
+  — verified locally against `wrangler dev` for both a 5K (no special
+  loading) and a marathon (3-day load, 75g/hr fueling).
+- Dashboard's "Nutrition" card: a search-and-log form with running daily
+  totals, plus a race nutrition plan calculator (pick any race you've
+  already created via the Training Plan card, enter body weight).
