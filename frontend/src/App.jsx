@@ -5,16 +5,24 @@ import RestingHRChart from "./components/RestingHRChart";
 import SleepChart from "./components/SleepChart";
 import ActivityFeed from "./components/ActivityFeed";
 import WeeklyStats from "./components/WeeklyStats";
+import TodayStats from "./components/TodayStats";
 import TrainingPlanCard from "./components/TrainingPlanCard";
 import NutritionCard from "./components/NutritionCard";
 import { fetchActivities, fetchDailySummary, fetchSleep } from "./lib/api";
 import { secondsToHoursNumber } from "./lib/format";
+
+const TABS = [
+  { id: "today", label: "Today" },
+  { id: "history", label: "History" },
+  { id: "activities", label: "Activities" },
+];
 
 function App() {
   const [dailySummary, setDailySummary] = useState([]);
   const [sleep, setSleep] = useState([]);
   const [activities, setActivities] = useState([]);
   const [status, setStatus] = useState("loading");
+  const [activeTab, setActiveTab] = useState("today");
 
   useEffect(() => {
     Promise.all([fetchDailySummary(), fetchSleep(), fetchActivities()])
@@ -27,6 +35,7 @@ function App() {
             lightHours: secondsToHoursNumber(n.lightSleepSeconds),
             remHours: secondsToHoursNumber(n.remSleepSeconds),
             awakeHours: secondsToHoursNumber(n.awakeSleepSeconds),
+            overallSleepScore: n.overallSleepScore,
           })),
         );
         setActivities(activityData);
@@ -55,27 +64,55 @@ function App() {
 
       {status === "ready" && (
         <>
-          <WeeklyStats activities={activities} />
-          <div className="dashboard-grid">
-            <Card title="Steps">
-              <StepsChart data={dailySummary} />
-            </Card>
-            <Card title="Resting Heart Rate">
-              <RestingHRChart data={dailySummary} />
-            </Card>
-            <Card title="Sleep Stages" wide>
-              <SleepChart data={sleep} />
-            </Card>
-            <Card title="Training Plan" wide>
-              <TrainingPlanCard />
-            </Card>
-            <Card title="Nutrition" wide>
-              <NutritionCard />
-            </Card>
-            <Card title="Recent Activities" wide>
-              <ActivityFeed activities={activities} />
-            </Card>
-          </div>
+          <nav className="tab-nav">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`tab-button${activeTab === t.id ? " active" : ""}`}
+                onClick={() => setActiveTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
+
+          {activeTab === "today" && (
+            <>
+              <TodayStats dailySummary={dailySummary} sleep={sleep} />
+              <WeeklyStats activities={activities} />
+              <div className="dashboard-grid">
+                <Card title="Training Plan" wide>
+                  <TrainingPlanCard />
+                </Card>
+                <Card title="Nutrition" wide>
+                  <NutritionCard />
+                </Card>
+              </div>
+            </>
+          )}
+
+          {activeTab === "history" && (
+            <div className="dashboard-grid">
+              <Card title="Steps">
+                <StepsChart data={dailySummary} />
+              </Card>
+              <Card title="Resting Heart Rate">
+                <RestingHRChart data={dailySummary} />
+              </Card>
+              <Card title="Sleep Stages" wide>
+                <SleepChart data={sleep} />
+              </Card>
+            </div>
+          )}
+
+          {activeTab === "activities" && (
+            <div className="dashboard-grid">
+              <Card title="Recent Activities" wide>
+                <ActivityFeed activities={activities} />
+              </Card>
+            </div>
+          )}
         </>
       )}
     </>
