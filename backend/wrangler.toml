@@ -5,7 +5,7 @@ compatibility_date = "2025-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "training-dashboard"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "19c6e95d-1827-40ab-91b9-1a0e1ecb73de"
 
 # CORS origin allowed to call this API (the GitHub Pages dashboard).
 # Set via `wrangler secret put` is not needed for this one since it's not
