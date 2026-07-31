@@ -86,5 +86,16 @@
     "sleepStartTimestampGMT": 1785378599000,
     "sleepEndTimestampGMT": 1785410159000,
     "overallSleepScore": 88
+  },
+  {
+    "date": "2026-07-31",
+    "sleepTimeSeconds": 27360,
+    "deepSleepSeconds": 4500,
+    "lightSleepSeconds": 16860,
+    "remSleepSeconds": 6000,
+    "awakeSleepSeconds": 1500,
+    "sleepStartTimestampGMT": 1785466654000,
+    "sleepEndTimestampGMT": 1785495514000,
+    "overallSleepScore": 84
   }
 ]
