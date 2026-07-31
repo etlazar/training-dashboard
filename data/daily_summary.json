@@ -113,15 +113,15 @@
   },
   {
     "date": "2026-07-31",
-    "totalSteps": 55,
+    "totalSteps": 1676,
     "dailyStepGoal": 6520,
     "restingHeartRate": 58,
     "minHeartRate": 55,
-    "maxHeartRate": 73,
-    "totalDistanceMeters": 45,
-    "totalKilocalories": 735.0,
-    "activeKilocalories": 0.0,
-    "floorsAscended": 0.0,
+    "maxHeartRate": 116,
+    "totalDistanceMeters": 1380,
+    "totalKilocalories": 1016.0,
+    "activeKilocalories": 62.0,
+    "floorsAscended": 3.36024,
     "moderateIntensityMinutes": 0,
     "vigorousIntensityMinutes": 0
   }
