@@ -169,16 +169,16 @@
   },
   {
     "date": "2026-08-04",
-    "totalSteps": 54,
+    "totalSteps": 2446,
     "dailyStepGoal": 5490,
     "restingHeartRate": 55,
-    "minHeartRate": 51,
-    "maxHeartRate": 83,
-    "totalDistanceMeters": 1989,
-    "totalKilocalories": 743.0,
-    "activeKilocalories": 0.0,
-    "floorsAscended": 0.0,
-    "moderateIntensityMinutes": 0,
-    "vigorousIntensityMinutes": 0
+    "minHeartRate": 50,
+    "maxHeartRate": 154,
+    "totalDistanceMeters": 5952,
+    "totalKilocalories": 1890.0,
+    "activeKilocalories": 221.0,
+    "floorsAscended": 1.09908,
+    "moderateIntensityMinutes": 9,
+    "vigorousIntensityMinutes": 4
   }
 ]
