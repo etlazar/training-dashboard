@@ -180,5 +180,19 @@
     "floorsAscended": 1.09908,
     "moderateIntensityMinutes": 9,
     "vigorousIntensityMinutes": 4
+  },
+  {
+    "date": "2026-08-05",
+    "totalSteps": null,
+    "dailyStepGoal": null,
+    "restingHeartRate": null,
+    "minHeartRate": null,
+    "maxHeartRate": null,
+    "totalDistanceMeters": null,
+    "totalKilocalories": null,
+    "activeKilocalories": null,
+    "floorsAscended": null,
+    "moderateIntensityMinutes": null,
+    "vigorousIntensityMinutes": null
   }
 ]
