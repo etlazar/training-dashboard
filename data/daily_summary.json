@@ -169,14 +169,14 @@
   },
   {
     "date": "2026-08-04",
-    "totalSteps": 2446,
+    "totalSteps": 2617,
     "dailyStepGoal": 5490,
     "restingHeartRate": 55,
     "minHeartRate": 50,
     "maxHeartRate": 154,
-    "totalDistanceMeters": 5952,
-    "totalKilocalories": 1890.0,
-    "activeKilocalories": 221.0,
+    "totalDistanceMeters": 6093,
+    "totalKilocalories": 2521.0,
+    "activeKilocalories": 234.0,
     "floorsAscended": 1.09908,
     "moderateIntensityMinutes": 9,
     "vigorousIntensityMinutes": 4
@@ -184,15 +184,15 @@
   {
     "date": "2026-08-05",
     "totalSteps": null,
-    "dailyStepGoal": null,
-    "restingHeartRate": null,
-    "minHeartRate": null,
-    "maxHeartRate": null,
+    "dailyStepGoal": 4920,
+    "restingHeartRate": 60,
+    "minHeartRate": 58,
+    "maxHeartRate": 68,
     "totalDistanceMeters": null,
-    "totalKilocalories": null,
-    "activeKilocalories": null,
-    "floorsAscended": null,
-    "moderateIntensityMinutes": null,
-    "vigorousIntensityMinutes": null
+    "totalKilocalories": 144.0,
+    "activeKilocalories": 0.0,
+    "floorsAscended": 0.0,
+    "moderateIntensityMinutes": 0,
+    "vigorousIntensityMinutes": 0
   }
 ]
