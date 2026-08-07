@@ -211,14 +211,14 @@
   },
   {
     "date": "2026-08-07",
-    "totalSteps": 2652,
+    "totalSteps": 3126,
     "dailyStepGoal": 4060,
     "restingHeartRate": 55,
     "minHeartRate": 46,
     "maxHeartRate": 118,
-    "totalDistanceMeters": 2196,
-    "totalKilocalories": 1580.0,
-    "activeKilocalories": 76.0,
+    "totalDistanceMeters": 2587,
+    "totalKilocalories": 1795.0,
+    "activeKilocalories": 82.0,
     "floorsAscended": 0.0,
     "moderateIntensityMinutes": 0,
     "vigorousIntensityMinutes": 0
